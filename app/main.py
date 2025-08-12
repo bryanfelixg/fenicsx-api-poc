@@ -7,6 +7,7 @@ import numpy as np
 from mpi4py import MPI
 from dolfinx import mesh, fem
 import ufl
+from dolfinx.fem.petsc import LinearProblem
 
 import io as sysio
 import base64
@@ -76,7 +77,7 @@ def solve(params: PoissonParams):
     dofs = fem.locate_dofs_topological(V, 1, facets)
     bc = fem.dirichletbc(fem.Constant(domain, params.bc_value), dofs, V)
 
-    problem = fem.petsc.LinearProblem(
+    problem = LinearProblem(
         a,
         L,
         bcs=[bc],
