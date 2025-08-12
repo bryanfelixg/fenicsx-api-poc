@@ -57,7 +57,7 @@ def solve(params: PoissonParams):
         cell_type=mesh.CellType.triangle,
     )
 
-    V = fem.FunctionSpace(domain, ("Lagrange", 1))
+    V = fem.functionspace(domain, ("Lagrange", 1))
     u = fem.Function(V)
     v = ufl.TestFunction(V)
     u_trial = ufl.TrialFunction(V)
