@@ -45,7 +45,7 @@ def healthz():
 
 @app.post("/solve")
 def solve(params: PoissonParams):
-    """Solve -Δu = f on [0,lx]x[0,ly] with u = bc on \u2202Ω.
+    """Solve -Δu = f on [0,lx]x[0,ly] with u = bc on ∂Ω.
     Returns a few summary stats and optionally a base64 PNG trisurface plot.
     """
     comm = MPI.COMM_WORLD
@@ -59,7 +59,6 @@ def solve(params: PoissonParams):
     )
 
     V = fem.functionspace(domain, ("Lagrange", 1))
-    u = fem.Function(V)
     v = ufl.TestFunction(V)
     u_trial = ufl.TrialFunction(V)
 
@@ -81,7 +80,6 @@ def solve(params: PoissonParams):
         a,
         L,
         bcs=[bc],
-        # Small meshes on free tiers: direct solve keeps things simple
         petsc_options={"ksp_type": "preonly", "pc_type": "lu"},
     )
 
@@ -109,7 +107,7 @@ def solve(params: PoissonParams):
         ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_zlabel("u")
         ax.set_title("Poisson solution (FEniCSx)")
         buf = sysio.BytesIO()
-        fig.savefig(buf, format="png", dpi=130, bbox_inches='tight')
+        fig.savefig(buf, format="png", dpi=300, bbox_inches='tight')
         plt.close(fig)
         plot_b64 = base64.b64encode(buf.getvalue()).decode()
 

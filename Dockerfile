@@ -1,4 +1,4 @@
-# Use the official FEniCSx/dolfinx image with PETSc/MPI preinstalled
+# FEniCSx/dolfinx image with PETSc/MPI preinstalled
 FROM dolfinx/dolfinx:stable
 
 # Keep things predictable on tiny machines
