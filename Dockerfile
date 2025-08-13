@@ -1,7 +1,7 @@
 # FEniCSx/dolfinx image with PETSc/MPI preinstalled
 FROM dolfinx/dolfinx:stable
 
-# Keep things predictable on tiny machines
+# Python ENV variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     OMP_NUM_THREADS=1 \

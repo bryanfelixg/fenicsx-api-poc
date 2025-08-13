@@ -10,10 +10,10 @@ app_ui = ui.page_fluid(
     ui.h2("FEniCSx Poisson with Gaussian Source"),
     ui.layout_sidebar(
         ui.sidebar(
-            ui.input_numeric("nx", "mesh: nx", 64, min=4, max=256),
-            ui.input_numeric("ny", "mesh: ny", 64, min=4, max=256),
-            ui.input_slider("x0", "source x0", 0, 1, 0.5, step=0.01),
-            ui.input_slider("y0", "source y0", 0, 1, 0.5, step=0.01),
+            ui.input_numeric("nx", "mesh: nx", 20, min=4, max=256),
+            ui.input_numeric("ny", "mesh: ny", 20, min=4, max=256),
+            ui.input_slider("x0", "source x0", 0, 1, 0.8, step=0.01),
+            ui.input_slider("y0", "source y0", 0, 1, 0.8, step=0.01),
             ui.input_slider("sigma", "source width (sigma)", 0.01, 0.5, 0.1, step=0.01),
             ui.input_numeric("amplitude", "source amplitude", 1.0),
             ui.input_numeric("bc", "Dirichlet boundary value", 0.0),

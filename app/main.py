@@ -40,7 +40,7 @@ def healthz():
 @app.post("/solve")
 def solve(params: PoissonParams):
     """
-    Solve -Δu = f(x,y) with Dirichlet BC, Gaussian source.
+    -Δu = f(x,y) with Dirichlet BC, Gaussian source.
     Returns mesh, solution, and summary statistics.
     """
     comm = MPI.COMM_WORLD
