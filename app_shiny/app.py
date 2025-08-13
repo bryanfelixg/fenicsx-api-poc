@@ -1,5 +1,8 @@
-from shiny import App, ui, render, reactive  # Add reactive import here!
-import httpx, base64, tempfile
+from shiny import App, ui, render, reactive
+import httpx
+import plotly.graph_objs as go
+
+from shinywidgets import output_widget, render_plotly
 
 API_BASE = "https://fenicsx-api-poc.onrender.com"
 
@@ -14,7 +17,7 @@ app_ui = ui.page_fluid(
             ui.input_action_button("solve", "Solve"),
         ),
         ui.card(
-            ui.output_image("plot", height="480px"),
+            output_widget("plot_surface", height="480px"),   # << USE output_widget FOR ALL WIDGETS
             ui.output_text_verbatim("center_u"),
         ),
     ),
@@ -22,9 +25,9 @@ app_ui = ui.page_fluid(
 
 def server(input, output, session):
     @output
-    @render.image(delete_file=True)
-    @reactive.event(input.solve)  # <--- Only triggers on "Solve" clicks!
-    def plot():
+    @render_plotly
+    @reactive.event(input.solve)
+    def plot_surface():
         payload = {
             "lx": 1.0,
             "ly": 1.0,
@@ -37,17 +40,37 @@ def server(input, output, session):
         r = httpx.post(f"{API_BASE}/solve", json=payload, timeout=60.0)
         r.raise_for_status()
         data = r.json()
-        png_bytes = base64.b64decode(data["plot_png_base64"])
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-            tmp.write(png_bytes)
-            tmp_path = tmp.name
-        return {"src": tmp_path, "alt": "Poisson solution", "height": "480px"}
+        print(type(data)) 
+        print(dir(data))
+
+        # Defensive: skip if any expected array missing or empty
+        if not all(key in data for key in ("x", "y", "u", "triangles")) or not data["triangles"]:
+            return go.Figure()
+
+        x = data["x"]
+        y = data["y"]
+        z = data["u"]
+        triangles = data["triangles"]
+
+        i, j, k = zip(*triangles)
+        surface = go.Mesh3d(
+            x=x, y=y, z=z, i=i, j=j, k=k,
+            intensity=z,
+            colorscale="Viridis",
+            showscale=True,
+        )
+        fig = go.Figure(data=[surface])
+        fig.update_layout(
+            title="Poisson solution (interactive)",
+            scene=dict(xaxis_title="x", yaxis_title="y", zaxis_title="u"),
+            margin=dict(l=0, r=0, b=0, t=40)
+        )
+        return fig
 
     @output
     @render.text
     @reactive.event(input.solve)
     def center_u():
-        # Run only when 'Solve' is clicked.
         payload = {
             "lx": 1.0,
             "ly": 1.0,
