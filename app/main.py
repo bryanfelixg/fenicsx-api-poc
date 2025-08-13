@@ -8,7 +8,7 @@ from dolfinx import mesh, fem
 import ufl
 from dolfinx.fem.petsc import LinearProblem
 
-app = FastAPI(title="FEniCSx Poisson API", version="0.1.0")
+app = FastAPI(title="FEniCSx Poisson API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,11 +21,17 @@ app.add_middleware(
 class PoissonParams(BaseModel):
     lx: float = Field(1.0, gt=0, description="Domain size in x")
     ly: float = Field(1.0, gt=0, description="Domain size in y")
-    nx: int = Field(48, ge=4, le=256, description="Cells in x (cap for PoC)")
-    ny: int = Field(48, ge=4, le=256, description="Cells in y (cap for PoC)")
-    f_const: float = Field(1.0, description="RHS constant f")
-    bc_value: float = Field(0.0, description="Dirichlet boundary value on ∂Ω")
-    return_plot: bool = Field(True, description="(unused/deprecated: kept for compatibility)")
+    nx: int = Field(48, ge=4, le=256, description="Cells in x")
+    ny: int = Field(48, ge=4, le=256, description="Cells in y")
+    # Point source
+    x0: float = Field(0.5, description="Point source x position")
+    y0: float = Field(0.5, description="Point source y position")
+    sigma: float = Field(0.1, gt=0, description="Point source width (Gaussian sigma)")
+    amplitude: float = Field(1.0, description="Point source amplitude")
+    # Dirichlet BC
+    bc_value: float = Field(0.0, description="Dirichlet boundary value")
+    # Output
+    return_plot: bool = Field(True, description="(deprecated; for compatibility)")
 
 @app.get("/healthz")
 def healthz():
@@ -34,8 +40,8 @@ def healthz():
 @app.post("/solve")
 def solve(params: PoissonParams):
     """
-    Solve -Δu = f on [0,lx]x[0,ly] with u = bc on ∂Ω.
-    Returns summary stats and mesh arrays for interactive 3D plotting.
+    Solve -Δu = f(x,y) with Dirichlet BC, Gaussian source.
+    Returns mesh, solution, and summary statistics.
     """
     comm = MPI.COMM_WORLD
 
@@ -50,10 +56,30 @@ def solve(params: PoissonParams):
     V = fem.functionspace(domain, ("Lagrange", 1))
     v = ufl.TestFunction(V)
     u_trial = ufl.TrialFunction(V)
-    f = fem.Constant(domain, params.f_const)
-    a = ufl.inner(ufl.grad(u_trial), ufl.grad(v)) * ufl.dx
-    L = f * v * ufl.dx
+    
+    # Gaussian source at (x0, y0)
+    x0, y0, sigma, amp = params.x0, params.y0, params.sigma, params.amplitude
 
+    class GaussianSource:
+        def __init__(self, x0, y0, sigma, amplitude):
+            self.x0 = x0
+            self.y0 = y0
+            self.sigma = sigma
+            self.amplitude = amplitude
+
+        def __call__(self, x):
+            # x has shape (2, N)
+            dx = x[0] - self.x0
+            dy = x[1] - self.y0
+            return self.amplitude * np.exp(-((dx**2 + dy**2)/(2*self.sigma**2)))
+
+    f_gauss = fem.Function(V)
+    f_gauss.interpolate(GaussianSource(x0, y0, sigma, amp))
+
+    a = ufl.inner(ufl.grad(u_trial), ufl.grad(v)) * ufl.dx
+    L = f_gauss * v * ufl.dx
+
+    # Dirichlet boundary
     def on_boundary(x):
         return np.isclose(x[0], 0.0) | np.isclose(x[0], params.lx) | \
                np.isclose(x[1], 0.0) | np.isclose(x[1], params.ly)
@@ -63,9 +89,7 @@ def solve(params: PoissonParams):
     bc = fem.dirichletbc(fem.Constant(domain, params.bc_value), dofs, V)
 
     problem = LinearProblem(
-        a,
-        L,
-        bcs=[bc],
+        a, L, bcs=[bc],
         petsc_options={"ksp_type": "preonly", "pc_type": "lu"},
     )
 
@@ -79,20 +103,20 @@ def solve(params: PoissonParams):
 
     # Extract triangle connectivity
     domain.topology.create_connectivity(2, 0)
-    tri = domain.topology.connectivity(2, 0).array.reshape(-1, 3)  # (num_tri, 3)
+    tri = domain.topology.connectivity(2, 0).array.reshape(-1, 3)
 
-    # Prepare data to send as lists
     x = coords[:, 0].tolist()
     y = coords[:, 1].tolist()
     u = values.tolist()
-    triangles = tri.tolist()  # Each row is a [i, j, k]
+    triangles = tri.tolist()
 
-    # Return only from rank 0
     if comm.rank == 0:
         return {
             "domain": {"lx": params.lx, "ly": params.ly},
             "mesh": {"nx": params.nx, "ny": params.ny, "ndofs": int(len(values))},
-            "rhs_const": params.f_const,
+            "source": {
+                "x0": x0, "y0": y0, "sigma": sigma, "amplitude": amp
+            },
             "bc_value": params.bc_value,
             "center_u": center_u,
             "x": x,

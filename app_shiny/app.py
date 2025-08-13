@@ -40,8 +40,6 @@ def server(input, output, session):
         r = httpx.post(f"{API_BASE}/solve", json=payload, timeout=60.0)
         r.raise_for_status()
         data = r.json()
-        print(type(data)) 
-        print(dir(data))
 
         # Defensive: skip if any expected array missing or empty
         if not all(key in data for key in ("x", "y", "u", "triangles")) or not data["triangles"]:
