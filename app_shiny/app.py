@@ -10,6 +10,8 @@ app_ui = ui.page_fluid(
     ui.h2("FEniCSx Poisson with Gaussian Source"),
     ui.layout_sidebar(
         ui.sidebar(
+            ui.input_numeric("lx", "x-length", 1, min=1, max=5),
+            ui.input_numeric("ly", "y-length", 1, min=1, max=5),
             ui.input_numeric("nx", "mesh: nx", 20, min=4, max=256),
             ui.input_numeric("ny", "mesh: ny", 20, min=4, max=256),
             ui.input_slider("x0", "source x0", 0, 1, 0.8, step=0.01),
@@ -33,8 +35,8 @@ def server(input, output, session):
 
     def build_payload():
         return {
-            "lx": 1.0,
-            "ly": 1.0,
+            "lx": float(input.lx()),
+            "ly": float(input.ly()),
             "nx": int(input.nx()),
             "ny": int(input.ny()),
             "x0": float(input.x0()),
