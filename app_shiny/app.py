@@ -44,7 +44,7 @@ def server(input, output, session):
             "sigma": float(input.sigma()),
             "amplitude": float(input.amplitude()),
             "bc_value": float(input.bc()),
-            "return_plot": True,
+            "return_plot": False,
         }
 
     @output
@@ -63,10 +63,16 @@ def server(input, output, session):
             x=x, y=y, z=z, i=i, j=j, k=k,
             intensity=z, colorscale="Viridis", showscale=True
         )
+        zmin, zmax = min(z), max(z)
         fig = go.Figure(data=[surface])
         fig.update_layout(
             title="Solution u(x, y)",
-            scene=dict(xaxis_title="x", yaxis_title="y", zaxis_title="u"),
+            scene=dict(
+                xaxis_title="x", 
+                yaxis_title="y", 
+                zaxis_title="u", 
+                zaxis=dict(range=[zmin, zmax]),
+            ),
             margin=dict(l=0, r=0, b=0, t=40)
         )
         return fig
@@ -116,7 +122,9 @@ def server(input, output, session):
         fig.update_layout(
             title="Finite Element Mesh",
             scene=dict(
-                xaxis_title="x", yaxis_title="y", zaxis_title="",
+                xaxis_title="x", 
+                yaxis_title="y", 
+                zaxis_title="",
                 zaxis=dict(showticklabels=False, visible=False)
             ),
             margin=dict(l=0, r=0, b=0, t=40)
